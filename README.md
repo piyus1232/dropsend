@@ -1,3 +1,28 @@
 # DropSend
 
-DropSend is an open source expense-tracker web-app where you can drop images of your receipts/bills and the ai gets your expenses tracked.
+DropSend is an open source expense-tracker web app. Drop images of your receipts or bills and AI tracks your expenses.
+
+## Tech stack
+
+- [Turborepo](https://turbo.build) monorepo
+- [Bun](https://bun.sh) package manager
+- [Next.js](https://nextjs.org) (App Router) in `apps/web`
+- [Tailwind CSS](https://tailwindcss.com)
+- [shadcn/ui](https://ui.shadcn.com)
+- [Supabase](https://supabase.com) (client starter only)
+
+Product and feature specs for the coding agent live in [`specs/`](./specs).
+
+App name and copy come from [`apps/web/src/lib/constants.ts`](./apps/web/src/lib/constants.ts).
+
+## Getting started
+
+```bash
+bun install
+cp .env.example apps/web/.env.local
+bun dev
+```
+
+Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `apps/web/.env.local` when you wire up Supabase.
+
+The web app runs at [http://localhost:3000](http://localhost:3000).
