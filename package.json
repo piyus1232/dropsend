@@ -1,0 +1,14 @@
+{
+  "name": "dropsend",
+  "private": true,
+  "packageManager": "bun@1.3.14",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8"
+  }
+}
