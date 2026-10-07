@@ -19,10 +19,7 @@ App name and copy come from [`apps/web/src/lib/constants.ts`](./apps/web/src/lib
 
 ```bash
 bun install
-cp .env.example apps/web/.env.local
+cp .env.example apps/web/.env
 bun dev
 ```
-
-Fill in `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `apps/web/.env.local` when you wire up Supabase.
-
 The web app runs at [http://localhost:3000](http://localhost:3000).
