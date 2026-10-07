@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { authRequest } from "@/lib/auth/request";
+import { toast } from "sonner";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export function LogoutButton() {
     const { error } = await authRequest("logout");
     if (error) {
       setPending(false);
+      toast.error(error ?? "Error logging out");
       return;
     }
     router.replace("/login");

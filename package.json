@@ -10,5 +10,8 @@
   },
   "devDependencies": {
     "turbo": "^2.5.8"
+  },
+  "dependencies": {
+    "sonner": "^2.0.8"
   }
 }
