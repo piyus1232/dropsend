@@ -6,16 +6,17 @@ import { fetchReceipts, type ReceiptWithPreview } from "@/lib/receipts/client";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * The user's recent receipts, kept live with Supabase Realtime.
- * RLS ensures the channel only receives the current user's rows.
+ * The user's recent receipts (or all of them with `all`), kept live with
+ * Supabase Realtime. RLS ensures the channel only receives the current
+ * user's rows.
  */
-export function useReceipts() {
+export function useReceipts({ all = false } = {}) {
   const [receipts, setReceipts] = useState<ReceiptWithPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const result = await fetchReceipts();
+    const result = await fetchReceipts({ all });
     if (result.ok) {
       setReceipts(result.data.receipts);
       setError(null);
@@ -23,7 +24,7 @@ export function useReceipts() {
       setError(result.error);
     }
     setLoading(false);
-  }, []);
+  }, [all]);
 
   useEffect(() => {
     // Initial load; state updates happen after the fetch resolves.
@@ -31,8 +32,11 @@ export function useReceipts() {
     void refresh();
 
     const supabase = createClient();
+    // A unique topic per subscription: the client reuses a channel with the
+    // same topic, so a remount (e.g. React Strict Mode) would otherwise pick
+    // up the channel the cleanup is still tearing down, and get no events.
     const channel = supabase
-      .channel("receipts-changes")
+      .channel(`receipts-changes:${crypto.randomUUID()}`)
       .on<Receipt>(
         "postgres_changes",
         { event: "*", schema: "public", table: "receipts" },
@@ -52,14 +56,23 @@ export function useReceipts() {
             return next;
           });
 
-          // New rows and newly uploaded images need a signed preview URL,
-          // which only the server can create.
-          if (payload.eventType === "INSERT" || updated.status === "uploaded") {
+          // New rows and newly verified images need a signed preview URL,
+          // which only the server can create, and newly extracted receipts
+          // need their extraction, which isn't part of the receipts row.
+          if (
+            payload.eventType === "INSERT" ||
+            updated.status === "processing" ||
+            updated.status === "needs_review"
+          ) {
             void refresh();
           }
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`Receipts realtime ${status}`, err);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);

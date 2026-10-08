@@ -2,11 +2,16 @@ import { createClient } from "@/lib/supabase/client";
 import {
   MAX_RECEIPTS_PER_BATCH,
   RECEIPTS_BUCKET,
+  type ExtractionDetail,
+  type ExtractionSummary,
   type Receipt,
 } from "@/lib/receipts/constants";
 import { receiptFileSchema } from "@/lib/receipts/schemas";
 
-export type ReceiptWithPreview = Receipt & { preview_url: string | null };
+export type ReceiptWithPreview = Receipt & {
+  preview_url: string | null;
+  extraction: ExtractionSummary | null;
+};
 
 type Result<T = null> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -172,6 +177,15 @@ export function deleteReceipt(receiptId: string) {
   return request(`/api/receipts/${receiptId}`, { method: "DELETE" });
 }
 
-export function fetchReceipts() {
-  return request<{ receipts: ReceiptWithPreview[] }>("/api/receipts");
+/** The 50 most recent receipts, or every receipt with `all`. */
+export function fetchReceipts({ all = false } = {}) {
+  return request<{ receipts: ReceiptWithPreview[] }>(
+    all ? "/api/receipts?all=true" : "/api/receipts",
+  );
+}
+
+export function fetchExtraction(receiptId: string) {
+  return request<{ extraction: ExtractionDetail }>(
+    `/api/receipts/${receiptId}/extraction`,
+  );
 }

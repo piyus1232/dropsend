@@ -2,6 +2,8 @@
 
 Users upload photos or screenshots of receipts. Images are stored in a private Supabase Storage bucket, a `receipts` row tracks each one, and an Inngest worker verifies each upload in the background. Status changes reach the UI live through Supabase Realtime. No OCR yet; the worker is where it will hook in.
 
+> **Note:** OCR was added in [004 OCR with Gemma 4](004_OCR-gemma.md), which changes parts of this feature: the worker now moves receipts to `processing` (not `uploaded`), processes one receipt at a time across all users, and the Realtime hook uses a unique channel per subscription. Sections affected are marked below.
+
 Built in four layers:
 
 1. Database schema, Storage bucket and policies.
@@ -48,6 +50,8 @@ Migration: `supabase/migrations/20261007120000_create_receipts.sql`. Apply it wi
 | `failed` | Upload or processing failed; reason in `error`. |
 
 The future statuses are already in the enum, so OCR won't need a migration to add them.
+
+> **Updated in [004](004_OCR-gemma.md):** `uploaded` is no longer used. Verified images go to `processing`, then `needs_review` or `failed`.
 
 ### `receipts` table
 
@@ -102,6 +106,8 @@ Realtime is enabled on `receipts` (added to the `supabase_realtime` publication)
 5. Realtime pushes each status change to the browser.
 ```
 
+> **Updated in [004](004_OCR-gemma.md):** step 4 now sets `processing`, then runs OCR and moves the receipt to `needs_review` (or `failed`).
+
 ## API Routes
 
 All routes require a session (401 otherwise). Bodies are JSON; errors are `{ "error": string }`.
@@ -144,6 +150,12 @@ The zod schemas are shared by the browser (to reject bad files on selection) and
 - **Local dev:** `INNGEST_DEV=1`, then run `bun run dev:inngest` (from the root or `apps/web`) next to `bun dev`. The dashboard is at http://localhost:8288.
     - `inngest-cli` is a dev dependency listed in `trustedDependencies`, because Bun skips the install script that downloads its binary otherwise. `bunx` and `npx` don't work for it under Bun.
 
+> **Updated in [004](004_OCR-gemma.md):**
+> - The function now has three steps (`verify-image`, `extract`, `save-extraction`).
+> - `processReceipt()` is renamed `verifyReceipt()`.
+> - Concurrency is `{ limit: 1 }` across all users, replacing the per-user limit of 2.
+> - `failReceipts()` also fails receipts in `processing`.
+
 ## Secret Key
 
 `src/lib/supabase/admin.ts` → `createAdminClient()`. It uses `SUPABASE_SECRET_KEY` and **bypasses RLS**.
@@ -162,6 +174,10 @@ The zod schemas are shared by the browser (to reject bad files on selection) and
 - **UPDATE:** merges the new row into the list.
 - **DELETE:** removes the row.
 - **INSERT, or a row becoming `uploaded`:** reloads the list, because new signed preview URLs can only be created server-side.
+
+> **Updated in [004](004_OCR-gemma.md):**
+> - The reload now happens when a row becomes `processing`.
+> - Each subscription uses a unique channel topic (`receipts-changes:{uuid}`). With the fixed topic, React Strict Mode's double mount left no live channel, so updates only showed after a refresh.
 
 ## Frontend
 
@@ -197,7 +213,7 @@ Browser helpers are in `src/lib/receipts/client.ts`: `uploadReceipts`, `retryRec
 
 ## Not Included / Future Work
 
-- OCR and extraction: hooks into the `process-receipt` worker; statuses `processing`, `needs_review`, `saved`.
+- ~~OCR and extraction~~: done in [004](004_OCR-gemma.md). `saved` is still future work.
 - Duplicate detection using `image_hash`.
 - Inngest production setup (Inngest Cloud keys, removing `INNGEST_DEV`).
 - A timer that fails abandoned uploads; currently only the lazy check on list.

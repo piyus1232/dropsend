@@ -22,3 +22,29 @@ export function formatRelativeTime(date: string | Date) {
   }
   return "just now";
 }
+
+/** "₹1,234.50" with a known currency, "1,234.50" without one. */
+export function formatMoney(amount: number, currency: string | null) {
+  if (currency) {
+    try {
+      return new Intl.NumberFormat("en", { style: "currency", currency }).format(
+        amount,
+      );
+    } catch {
+      // Not a currency Intl knows; fall through to a plain number.
+    }
+  }
+  return new Intl.NumberFormat("en", { minimumFractionDigits: 2 }).format(amount);
+}
+
+const dateFormat = new Intl.DateTimeFormat("en", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+/** A calendar date like "2026-10-08" as "Oct 8, 2026", without timezone shifts. */
+export function formatDate(date: string) {
+  return dateFormat.format(new Date(`${date}T00:00:00Z`));
+}
