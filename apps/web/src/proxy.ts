@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/proxy";
 
 const AUTH_PAGES = ["/login", "/signup"];
-const PUBLIC_PATHS = ["/", "/api/auth"];
+// /api/inngest is called by Inngest itself and verified by its signing key.
+const PUBLIC_PATHS = ["/", "/api/auth", "/api/inngest"];
 
 function matches(pathname: string, paths: string[]) {
   return paths.some((path) =>

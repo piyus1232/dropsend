@@ -1,7 +1,7 @@
-import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/auth/logout-button";
-import { APP_NAME } from "@/lib/constants";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ProtectedLayout({ children }: LayoutProps<"/">) {
@@ -14,26 +14,24 @@ export default async function ProtectedLayout({ children }: LayoutProps<"/">) {
     redirect("/login");
   }
 
-  const name = data.claims.user_metadata?.full_name as string | undefined;
+  const user = {
+    name: (data.claims.user_metadata?.full_name as string | undefined) ?? null,
+    email: (data.claims.email as string | undefined) ?? null,
+  };
+
+  // Remember whether the sidebar was collapsed (cookie set by SidebarProvider).
+  const cookieStore = await cookies();
+  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <div className="flex flex-1 flex-col bg-background">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
-          <Link href="/dashboard" className="font-semibold text-foreground">
-            {APP_NAME}
-          </Link>
-          <div className="flex items-center gap-3">
-            {name && (
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                {name}
-              </span>
-            )}
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
-      <main className="flex flex-1 flex-col">{children}</main>
-    </div>
+    <SidebarProvider defaultOpen={defaultOpen}>
+      <AppSidebar user={user} />
+      <SidebarInset>
+        <header className="flex h-14 items-center gap-2 border-b border-border px-4">
+          <SidebarTrigger />
+        </header>
+        <div className="flex flex-1 flex-col">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

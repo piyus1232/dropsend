@@ -24,8 +24,8 @@ This is not a normal expense tracker because the user here does not needs to fil
     - Drag and Drop
     - multiple-image upload (background job processing)
     - Allowed file types: JPG, JPEG, PNG, WebP only.
-    - Max file size: 5 MB per file.
-    - Max batch size: 8 files per upload (multiple-selection).
+    - Max file size: 1 MB per file.
+    - Max batch size: 4 files per upload (multiple-selection).
     - Images are stored in a Supabase Storage bucket (private, per user) and kept after extraction so the user can view the original receipt alongside the expense.
 
 2. Extraction with OCR:

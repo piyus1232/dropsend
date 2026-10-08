@@ -5,6 +5,7 @@
   "workspaces": ["apps/*"],
   "scripts": {
     "dev": "turbo dev",
+    "dev:inngest": "bun run --filter @dropsend/web dev:inngest",
     "build": "turbo build",
     "lint": "turbo lint"
   },
