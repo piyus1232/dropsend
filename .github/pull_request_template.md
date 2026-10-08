@@ -20,3 +20,4 @@ Closes #
 
 - [ ] I have tested my changes
 - [ ] I have followed the project's coding conventions
+- [ ] I have updated the specs for the agent context
