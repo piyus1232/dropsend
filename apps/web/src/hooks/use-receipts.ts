@@ -31,8 +31,11 @@ export function useReceipts() {
     void refresh();
 
     const supabase = createClient();
+    // A unique topic per subscription: the client reuses a channel with the
+    // same topic, so a remount (e.g. React Strict Mode) would otherwise pick
+    // up the channel the cleanup is still tearing down, and get no events.
     const channel = supabase
-      .channel("receipts-changes")
+      .channel(`receipts-changes:${crypto.randomUUID()}`)
       .on<Receipt>(
         "postgres_changes",
         { event: "*", schema: "public", table: "receipts" },
@@ -59,7 +62,11 @@ export function useReceipts() {
           }
         },
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error(`Receipts realtime ${status}`, err);
+        }
+      });
 
     return () => {
       void supabase.removeChannel(channel);
