@@ -23,7 +23,7 @@ export const PAYMENT_METHODS = [
 ] as const;
 
 // Largest value numeric(12, 2) can hold.
-const MAX_AMOUNT = 9_999_999_999.99;
+export const MAX_AMOUNT = 9_999_999_999.99;
 
 /**
  * Cleans up a value the model got wrong instead of rejecting the whole
