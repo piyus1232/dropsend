@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Upload } from "lucide-react";
+import { LayoutDashboard, ReceiptText, Upload } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -21,6 +21,7 @@ import { APP_NAME } from "@/lib/constants";
 const NAV_ITEMS = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Upload Receipt", href: "/upload", icon: Upload },
+  { title: "Receipts", href: "/receipts", icon: ReceiptText },
 ] as const;
 
 type AppSidebarProps = {
