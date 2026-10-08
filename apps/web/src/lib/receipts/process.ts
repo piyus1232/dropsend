@@ -31,13 +31,14 @@ function matchesMimeType(bytes: Uint8Array, mimeType: ReceiptMimeType) {
 
 /**
  * Verifies an uploaded receipt image and moves the receipt from `uploading`
- * to `uploaded` (or `failed`). Status changes reach the client via Realtime.
+ * to `processing` (or `failed`). Status changes reach the client via Realtime.
+ * Returns true if the receipt is ready for OCR.
  *
  * Runs inside the Inngest worker. Problems with the file itself fail the
  * receipt right away; unexpected errors (database, Storage) are thrown so
  * Inngest retries them.
  */
-export async function processReceipt(receiptId: string) {
+export async function verifyReceipt(receiptId: string) {
   const admin = createAdminClient();
 
   const { data: receipt, error: fetchError } = await admin
@@ -47,23 +48,22 @@ export async function processReceipt(receiptId: string) {
     .maybeSingle();
 
   if (fetchError) throw new Error(`Failed to load receipt: ${fetchError.message}`);
-  // Deleted, or already handled by an earlier attempt.
-  if (!receipt || receipt.status !== "uploading") return;
+  // Deleted, or already handled.
+  if (!receipt) return false;
+  // Verified by an earlier attempt whose result wasn't recorded.
+  if (receipt.status === "processing") return true;
+  if (receipt.status !== "uploading") return false;
 
   const fail = async (message: string) => {
-    const { error } = await admin
-      .from("receipts")
-      .update({ status: "failed", error: message })
-      .eq("id", receiptId);
-    if (error) throw new Error(`Failed to update receipt: ${error.message}`);
+    await failReceipts([{ id: receiptId, error: message }]);
+    return false;
   };
 
   const bucket = admin.storage.from(RECEIPTS_BUCKET);
   // Resolves false for a missing file; throws (→ retry) on other errors.
   const { data: exists } = await bucket.exists(receipt.storage_path);
   if (!exists) {
-    await fail("The image was not uploaded. Please try again.");
-    return;
+    return fail("The image was not uploaded. Please try again.");
   }
 
   const { data: file, error: downloadError } = await bucket.download(
@@ -78,20 +78,22 @@ export async function processReceipt(receiptId: string) {
   if (!matchesMimeType(bytes, receipt.mime_type)) {
     // Not a real image of the declared type; don't keep it.
     await bucket.remove([receipt.storage_path]);
-    await fail("This file is not a valid JPG, PNG or WebP image.");
-    return;
+    return fail("This file is not a valid JPG, PNG or WebP image.");
   }
 
   const imageHash = createHash("sha256").update(bytes).digest("hex");
 
-  const { error: updateError } = await admin
+  const { data: updated, error: updateError } = await admin
     .from("receipts")
-    .update({ status: "uploaded", image_hash: imageHash, error: null })
+    .update({ status: "processing", image_hash: imageHash, error: null })
     .eq("id", receiptId)
-    .eq("status", "uploading");
+    .eq("status", "uploading")
+    .select("id");
   if (updateError) {
     throw new Error(`Failed to update receipt: ${updateError.message}`);
   }
+  // Empty if the receipt was deleted in the meantime.
+  return updated.length > 0;
 }
 
 /**
@@ -124,9 +126,9 @@ export async function enqueueReceiptProcessing(
 }
 
 /**
- * Marks the given receipts (still `uploading`) as failed with a reason.
- * Throws if any update fails, so callers don't report success while the
- * receipt is left stuck in `uploading`.
+ * Marks the given receipts (still `uploading` or `processing`) as failed with
+ * a reason. Throws if any update fails, so callers don't report success while
+ * the receipt is left stuck.
  */
 export async function failReceipts(
   failures: { id: string; error: string }[],
@@ -140,7 +142,7 @@ export async function failReceipts(
         .from("receipts")
         .update({ status: "failed", error: error || "Upload failed." })
         .eq("id", id)
-        .eq("status", "uploading"),
+        .in("status", ["uploading", "processing"]),
     ),
   );
 

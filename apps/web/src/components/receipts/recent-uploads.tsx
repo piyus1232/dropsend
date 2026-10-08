@@ -145,7 +145,9 @@ function ReceiptRow({
             {receipt.original_filename}
           </p>
           <Badge variant={badge.variant}>
-            {receipt.status === "uploading" && <Loader2 className="animate-spin" />}
+            {(receipt.status === "uploading" || receipt.status === "processing") && (
+              <Loader2 className="animate-spin" />
+            )}
             {badge.label}
           </Badge>
         </div>

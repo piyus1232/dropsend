@@ -16,7 +16,7 @@ export type ReceiptMimeType = keyof typeof RECEIPT_MIME_TYPES;
 
 export const RECEIPT_STATUSES = [
   "uploading",
-  "uploaded",
+  "uploaded", // no longer used: verified images go straight to `processing`
   "processing",
   "needs_review",
   "saved",

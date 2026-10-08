@@ -52,9 +52,9 @@ export function useReceipts() {
             return next;
           });
 
-          // New rows and newly uploaded images need a signed preview URL,
+          // New rows and newly verified images need a signed preview URL,
           // which only the server can create.
-          if (payload.eventType === "INSERT" || updated.status === "uploaded") {
+          if (payload.eventType === "INSERT" || updated.status === "processing") {
             void refresh();
           }
         },
