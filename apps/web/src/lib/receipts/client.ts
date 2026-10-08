@@ -46,25 +46,46 @@ async function uploadToStorage(path: string, token: string, file: File) {
   return error?.message ?? null;
 }
 
-function completeUploads(
+const COMPLETE_ATTEMPTS = 3;
+
+/**
+ * Reports upload results to the server. Retried on failure: by this point the
+ * files are already in Storage, and the server only acts on receipts that are
+ * still `uploading`, so repeating the call is safe.
+ */
+async function completeUploads(
   uploaded: string[],
   failed: { id: string; error: string }[],
 ) {
-  return request("/api/receipts/complete", {
-    method: "POST",
-    body: JSON.stringify({ uploaded, failed }),
-  });
+  const send = () =>
+    request("/api/receipts/complete", {
+      method: "POST",
+      body: JSON.stringify({ uploaded, failed }),
+    });
+
+  let result = await send();
+  for (let attempt = 1; attempt < COMPLETE_ATTEMPTS && !result.ok; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    result = await send();
+  }
+  return result;
 }
 
 /**
  * Uploads up to MAX_RECEIPTS_PER_BATCH files: gets signed upload tokens,
  * uploads each file straight to Storage in parallel, then reports the result.
  * Returns the receipt id for each file (in order) so the caller can keep the
- * File around for retries.
+ * File around for retries, how many files failed, and `completeError` if the
+ * server couldn't be told about the uploads (receipts stay `uploading` until
+ * the stale-upload check marks them failed).
  */
-export async function uploadReceipts(
-  files: File[],
-): Promise<Result<{ receiptIds: string[] }>> {
+export async function uploadReceipts(files: File[]): Promise<
+  Result<{
+    receiptIds: string[];
+    failedCount: number;
+    completeError: string | null;
+  }>
+> {
   if (files.length > MAX_RECEIPTS_PER_BATCH) {
     return {
       ok: false,
@@ -102,11 +123,19 @@ export async function uploadReceipts(
     .filter((o) => o.error !== null && o.error !== "skipped")
     .map((o) => ({ id: o.id, error: "The image could not be uploaded." }));
 
-  if (uploaded.length + failed.length > 0) {
-    await completeUploads(uploaded, failed);
-  }
+  const completed =
+    uploaded.length + failed.length > 0
+      ? await completeUploads(uploaded, failed)
+      : null;
 
-  return { ok: true, data: { receiptIds: uploads.map((u) => u.receiptId) } };
+  return {
+    ok: true,
+    data: {
+      receiptIds: uploads.map((u) => u.receiptId),
+      failedCount: uploads.length - uploaded.length,
+      completeError: completed && !completed.ok ? completed.error : null,
+    },
+  };
 }
 
 /**

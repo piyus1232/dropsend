@@ -51,12 +51,18 @@ export async function POST(request: Request) {
   );
 
   const failed = results.filter((result) => result.error || !result.data);
-  await failReceipts(
-    failed.map(({ row }) => ({
-      id: row.id,
-      error: "Could not start the upload. Please try again.",
-    })),
-  );
+  try {
+    await failReceipts(
+      failed.map(({ row }) => ({
+        id: row.id,
+        error: "Could not start the upload. Please try again.",
+      })),
+    );
+  } catch (error) {
+    // Don't fail the whole batch: the other files can still upload. These
+    // rows stay `uploading` and the stale-upload check fails them later.
+    console.error("Failed to mark receipts without upload URLs", error);
+  }
 
   return NextResponse.json(
     {

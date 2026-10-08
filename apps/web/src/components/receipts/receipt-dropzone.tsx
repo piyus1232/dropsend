@@ -94,14 +94,33 @@ export function ReceiptDropzone({ onUploaded }: ReceiptDropzoneProps) {
       return;
     }
 
-    onUploaded(
-      result.data.receiptIds.map((receiptId, i) => ({ receiptId, file: files[i] })),
-    );
+    // The receipts exist now (even if some failed), so clear the selection;
+    // failures are retried from Recent uploads, not by uploading again.
+    const { receiptIds, failedCount, completeError } = result.data;
+    onUploaded(receiptIds.map((receiptId, i) => ({ receiptId, file: files[i] })));
     revokePreviews(selected);
     setSelected([]);
-    toast.success(
-      files.length === 1 ? "Receipt uploaded" : `${files.length} receipts uploaded`,
-    );
+
+    const uploadedCount = files.length - failedCount;
+    if (completeError) {
+      toast.error(
+        "Your images were uploaded, but processing couldn't start. They'll be marked as failed within 10 minutes, and you can retry them then.",
+      );
+    } else if (uploadedCount === 0) {
+      toast.error(
+        files.length === 1
+          ? "The receipt couldn't be uploaded."
+          : "None of the receipts could be uploaded.",
+      );
+    } else if (failedCount > 0) {
+      toast.warning(
+        `${uploadedCount} of ${files.length} receipts uploaded. Retry the failed ones from Recent uploads.`,
+      );
+    } else {
+      toast.success(
+        files.length === 1 ? "Receipt uploaded" : `${files.length} receipts uploaded`,
+      );
+    }
   }
 
   return (

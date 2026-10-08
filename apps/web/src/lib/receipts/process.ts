@@ -97,7 +97,8 @@ export async function processReceipt(receiptId: string) {
 /**
  * Hands receipts to the Inngest worker (one `receipt/uploaded` event each).
  * If Inngest can't be reached, the receipts are marked failed so the user
- * can retry. Callers must have checked the receipts belong to `userId`.
+ * can retry; if that also fails, this throws. Callers must have checked the
+ * receipts belong to `userId`.
  */
 export async function enqueueReceiptProcessing(
   userId: string,
@@ -122,14 +123,18 @@ export async function enqueueReceiptProcessing(
   }
 }
 
-/** Marks the given receipts as failed with a client-reported error. */
+/**
+ * Marks the given receipts (still `uploading`) as failed with a reason.
+ * Throws if any update fails, so callers don't report success while the
+ * receipt is left stuck in `uploading`.
+ */
 export async function failReceipts(
   failures: { id: string; error: string }[],
 ) {
   if (failures.length === 0) return;
   const admin = createAdminClient();
 
-  await Promise.all(
+  const results = await Promise.all(
     failures.map(({ id, error }) =>
       admin
         .from("receipts")
@@ -138,6 +143,13 @@ export async function failReceipts(
         .eq("status", "uploading"),
     ),
   );
+
+  const failedUpdate = results.find((result) => result.error);
+  if (failedUpdate?.error) {
+    throw new Error(
+      `Failed to mark receipts as failed: ${failedUpdate.error.message}`,
+    );
+  }
 }
 
 /**
@@ -149,7 +161,7 @@ export async function failStaleUploads(userId: string) {
     Date.now() - STALE_UPLOAD_MINUTES * 60 * 1000,
   ).toISOString();
 
-  await createAdminClient()
+  const { error } = await createAdminClient()
     .from("receipts")
     .update({
       status: "failed",
@@ -158,4 +170,7 @@ export async function failStaleUploads(userId: string) {
     .eq("user_id", userId)
     .eq("status", "uploading")
     .lt("updated_at", cutoff);
+
+  // Not fatal: the list still loads, and the next list request tries again.
+  if (error) console.error("Failed to fail stale uploads", error);
 }
