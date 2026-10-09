@@ -6,7 +6,10 @@ import {
   type ExtractionSummary,
   type Receipt,
 } from "@/lib/receipts/constants";
-import { receiptFileSchema } from "@/lib/receipts/schemas";
+import {
+  receiptFileSchema,
+  type UpdateExtractionOutput,
+} from "@/lib/receipts/schemas";
 
 export type ReceiptWithPreview = Receipt & {
   preview_url: string | null;
@@ -188,4 +191,12 @@ export function fetchExtraction(receiptId: string) {
   return request<{ extraction: ExtractionDetail }>(
     `/api/receipts/${receiptId}/extraction`,
   );
+}
+
+/** Saves the user's edited extraction and moves the receipt to `saved`. */
+export function updateExtraction(receiptId: string, values: UpdateExtractionOutput) {
+  return request(`/api/receipts/${receiptId}/extraction`, {
+    method: "PATCH",
+    body: JSON.stringify(values),
+  });
 }

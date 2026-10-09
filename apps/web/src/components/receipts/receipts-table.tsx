@@ -90,6 +90,7 @@ export function ReceiptsTable() {
         receipt={viewing}
         open={sheetOpen}
         onOpenChange={setSheetOpen}
+        onSaved={() => void refresh()}
       />
     </>
   );
