@@ -49,6 +49,7 @@ import type {
   PaymentMethod,
 } from "@/lib/receipts/constants";
 import {
+  MAX_ITEMS,
   updateExtractionSchema,
   type UpdateExtractionOutput,
 } from "@/lib/receipts/schemas";
@@ -399,6 +400,9 @@ function ExtractionForm({
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
         {previewUrl && <ReceiptPreview previewUrl={previewUrl} filename="Receipt image" />}
 
+        {/* Disabled while submitting, so edits mid-request can't be silently
+            dropped when the sheet closes on success. */}
+        <fieldset disabled={isSubmitting} className="contents">
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-medium text-foreground">Details</h3>
           <div className="grid grid-cols-2 gap-x-4 gap-y-4">
@@ -499,6 +503,7 @@ function ExtractionForm({
               type="button"
               variant="outline"
               size="sm"
+              disabled={fields.length >= MAX_ITEMS}
               onClick={() =>
                 append({ name: "", quantity: "", unit_price: "", total: "" })
               }
@@ -507,6 +512,7 @@ function ExtractionForm({
               Add item
             </Button>
           </div>
+          <FieldError errors={[errors.items?.root]} />
 
           {fields.length === 0 ? (
             <p className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
@@ -606,6 +612,7 @@ function ExtractionForm({
             </div>
           )}
         </section>
+        </fieldset>
       </div>
 
       <SheetFooter className="border-t border-border bg-muted/30">

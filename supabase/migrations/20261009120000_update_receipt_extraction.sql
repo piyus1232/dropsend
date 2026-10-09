@@ -22,19 +22,24 @@ declare
   v_user_id uuid;
   v_extraction_id uuid;
 begin
+  -- Lock the receipt first, matching save_receipt_extraction's lock order.
+  -- Deleting a receipt locks it before cascading into extractions; locking
+  -- extractions first here instead could deadlock against a concurrent
+  -- delete.
+  if not exists (
+    select 1 from public.receipts
+    where id = p_receipt_id and status = 'needs_review'
+    for update
+  ) then
+    return false;
+  end if;
+
   select user_id, id into v_user_id, v_extraction_id
   from public.extractions
   where receipt_id = p_receipt_id
   for update;
 
   if v_extraction_id is null then
-    return false;
-  end if;
-
-  if not exists (
-    select 1 from public.receipts
-    where id = p_receipt_id and status = 'needs_review'
-  ) then
     return false;
   end if;
 

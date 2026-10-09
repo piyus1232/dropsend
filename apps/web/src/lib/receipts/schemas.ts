@@ -50,7 +50,7 @@ export const retrySchema = z.object({
 
 export type ReceiptFileInput = z.input<typeof receiptFileSchema>;
 
-const MAX_ITEMS = 50;
+export const MAX_ITEMS = 50;
 
 /** Blank strings from empty form fields mean "not set", same as null. */
 const emptyToNull = (value: unknown) =>
@@ -113,6 +113,10 @@ const editableDate = z.preprocess(
     ),
 );
 
+// Largest value, and smallest positive increment, numeric(12, 3) can hold.
+const MAX_QUANTITY = 999_999_999.999;
+const MIN_QUANTITY = 0.001;
+
 export const updateExtractionItemSchema = z.object({
   name: z.string().trim().min(1, { error: "Item name is required" }).max(200),
   quantity: z.preprocess(
@@ -120,8 +124,8 @@ export const updateExtractionItemSchema = z.object({
     z
       .number()
       .finite()
-      .positive({ error: "Must be greater than 0" })
-      .max(1e9)
+      .min(MIN_QUANTITY, { error: "Must be greater than 0" })
+      .max(MAX_QUANTITY, { error: "Quantity is too large" })
       .nullable(),
   ),
   unit_price: editableItemAmount,
