@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { TopExpenseRow } from "@/lib/dashboard/constants";
+import { UNKNOWN_CURRENCY, type TopExpenseRow } from "@/lib/dashboard/constants";
 import { formatDate, formatMoney } from "@/lib/format";
 
 /** The 5 highest individual expenses in the selected range. */
@@ -38,8 +38,18 @@ export function TopExpensesList({ expenses }: { expenses: TopExpenseRow[] }) {
                       {expense.expense_date ? formatDate(expense.expense_date) : "No date"}
                     </span>
                   </div>
-                  <span className="shrink-0 font-medium tabular-nums text-foreground">
-                    {formatMoney(expense.amount, expense.currency)}
+                  <span className="flex shrink-0 flex-col items-end">
+                    <span className="font-medium tabular-nums text-foreground">
+                      {formatMoney(
+                        expense.amount,
+                        expense.currency === UNKNOWN_CURRENCY ? null : expense.currency,
+                      )}
+                    </span>
+                    {expense.currency === UNKNOWN_CURRENCY && (
+                      <span className="text-xs text-muted-foreground">
+                        Unknown currency
+                      </span>
+                    )}
                   </span>
                 </Link>
               </li>

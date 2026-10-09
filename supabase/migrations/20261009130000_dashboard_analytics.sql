@@ -75,7 +75,7 @@ as $$
     e.merchant,
     e.date as expense_date,
     e.amount,
-    e.currency,
+    coalesce(e.currency, 'UNKNOWN') as currency,
     r.original_filename
   from public.extractions e
   join public.receipts r on r.id = e.receipt_id

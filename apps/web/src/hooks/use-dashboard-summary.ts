@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchDashboardSummary } from "@/lib/dashboard/client";
 import type { DashboardSummaryResponse, DatePreset } from "@/lib/dashboard/constants";
 
@@ -12,11 +12,16 @@ export function useDashboardSummary(
   const [data, setData] = useState<DashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Guards against an older, slower request resolving after a newer one and
+  // overwriting its (more current) result.
+  const requestId = useRef(0);
 
   const customFrom = custom?.from;
   const customTo = custom?.to;
 
   const refresh = useCallback(async () => {
+    const thisRequestId = ++requestId.current;
+
     // Custom range selected but not fully picked yet: nothing to fetch.
     if (preset === "custom" && (!customFrom || !customTo)) {
       setData(null);
@@ -30,6 +35,9 @@ export function useDashboardSummary(
       preset,
       preset === "custom" ? { from: customFrom!, to: customTo! } : undefined,
     );
+
+    if (thisRequestId !== requestId.current) return; // superseded, ignore
+
     if (result.ok) {
       setData(result.data);
       setError(null);
